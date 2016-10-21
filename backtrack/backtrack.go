@@ -36,7 +36,7 @@ type Position interface {
 }
 
 type Backtracker struct {
-	p Problem
+	Problem
 }
 
 // New returns a Backtracker initiallized with the passed Problem set
@@ -48,14 +48,14 @@ func (b Backtracker) Solve(pos Position) bool {
 	success := false
 	// Loop until we run out of possible values or we find a solution
 	for ; !success && !pos.End(); pos = pos.NextVal() {
-		if b.p.Valid(pos) { // this could be a winner
-			b.p.Record(pos)
-			if b.p.Done(pos) { // we found a solution!
+		if b.Valid(pos) { // this could be a winner
+			b.Record(pos)
+			if b.Done(pos) { // we found a solution!
 				success = true
 			} else { // we havent sound a solution yet
 				success = b.Solve(pos.NextPos()) // continue to the next variable
 				if !success {                    // that was a failed path
-					b.p.Undo(pos)
+					b.Undo(pos)
 				}
 			}
 		}
