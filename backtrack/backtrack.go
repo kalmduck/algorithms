@@ -47,7 +47,7 @@ func New(p Problem) Backtracker {
 func (b Backtracker) Solve(pos Position) bool {
 	success := false
 	// Loop until we run out of possible values or we find a solution
-	for ; !success || pos != nil; pos = pos.NextVal() {
+	for ; !success && !pos.End(); pos = pos.NextVal() {
 		if b.p.Valid(pos) { // this could be a winner
 			b.p.Record(pos)
 			if b.p.Done(pos) { // we found a solution!
