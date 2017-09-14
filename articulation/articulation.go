@@ -35,7 +35,7 @@ func newTracker(n int) *tracker {
 // GetArticulationPoints returns a slice containing the nodes
 // determined to be articulation points.
 func GetArticulationPoints(g *graph.Graph) []int {
-	t := newTracker(len(g.Nodes))
+	t := newTracker(g.Size())
 	for !t.allVisited() {
 		n, err := t.nextUnvisited()
 		if err != nil {
@@ -62,7 +62,8 @@ func findAP(g *graph.Graph, t *tracker, i, d int) {
 		}
 		return ladj
 	}
-	for _, adj := range g.Nodes[i].Edges {
+	n := g.GetNode(i)
+	for adj := range n.Edges {
 		if !t.visited[adj] { // we haven't been hear yet
 			t.parent[adj] = i // mark the parent so we don't go in reverse
 			findAP(g, t, adj, d+1)

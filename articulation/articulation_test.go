@@ -78,7 +78,7 @@ func contains(vals []int, n int) bool {
 }
 
 func TestRandomGraph(t *testing.T) {
-	g := graph.NewRandomGraph(100, 50)
+	g := graph.NewRandomDensityGraph(100, 50)
 	fmt.Println(g)
 	ap := GetArticulationPoints(g)
 	fmt.Println(ap)
