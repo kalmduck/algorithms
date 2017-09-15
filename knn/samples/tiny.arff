@@ -1,0 +1,12 @@
+@relation small
+@attribute A1 NUMERIC
+@attribute A2 NUMERIC
+@attribute A3 NUMERIC
+@attribute A4 NUMERIC
+@attribute class NUMERIC
+@data
+0, 0, 0, 0, 0
+1, 0, 0, 0, 0
+0, 1, 0, 0, 0
+0, 0, 1, 0, 0
+0, 0, 0, 1, 0
