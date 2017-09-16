@@ -1,6 +1,7 @@
 package knn
 
 import (
+	"container/heap"
 	"fmt"
 	"math"
 
@@ -54,13 +55,59 @@ func (d Dataset) GetClass(i int) int {
 	return int(r.Values[len(r.Values)-1].(float64))
 }
 
-type sparseDistance [][]float64
+// Neighbor provides storage for the parts we care about for knn.
+type Neighbor struct {
+	distance float64
+	class    int
+	index    int
+}
 
-func (s sparseDistance) fetchDistance(i, j int) float64 {
-	if j < i {
-		i, j = j, i
+// Neighbors implements a heap.Interface to store/sort the nearest neighbors,
+// allowing for simpler/faster classification
+type Neighbors []*Neighbor
+
+// Len is required for sort.Interface.
+func (n Neighbors) Len() int {
+	return len(n)
+}
+
+// Less is required for sort.Interface.
+func (n Neighbors) Less(i, j int) bool {
+	return n[i].distance > n[j].distance
+}
+
+// Swap is required for sort.Interface.
+func (n Neighbors) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
+	n[i].index = i
+	n[j].index = j
+}
+
+// Push implements heap.Interface.  Adds the neighbor to the correct place
+// in the heap, assuring that the longest distance is ready to be popped.
+func (n *Neighbors) Push(x interface{}) {
+	neighbor := x.(*Neighbor)
+	neighbor.index = len(*n)
+	*n = append(*n, neighbor)
+}
+
+// Pop implementing heap.Interface. Removes and returns the Neighbor in the
+// nearest neighbors set with the longest distance, effectively the farthest
+// nearest neighbor.
+func (n *Neighbors) Pop() interface{} {
+	old := *n
+	neighbor := old[len(old)-1]
+	neighbor.index = -1 // for safety
+	*n = old[:len(old)-1]
+	return neighbor
+}
+
+func (n Neighbors) String() string {
+	var s string
+	for i, v := range n {
+		s += fmt.Sprintf("i: %d\tNeighbor: %v\n", i, v)
 	}
-	return s[i][j]
+	return s
 }
 
 // ReadARFF is just me playing around
@@ -85,39 +132,38 @@ func ReadARFF() {
 func KNN(k int, d Dataset) []int {
 	predictions := make([]int, len(d.Rows))
 
-	distances := calculateDistances(d)
+	//	distances := calculateDistances(d)
 
 	for i := range d.Rows {
-		neighbors := findNeighbors(i, k, distances, d)
+		neighbors := findNeighbors(i, k, d)
 		predictions[i] = predictClass(neighbors, d)
 	}
 
 	return predictions
 }
 
-func findNeighbors(i, k int, dist sparseDistance, d Dataset) map[int]bool {
-	neighbors := make(map[int]bool)
-	for len(neighbors) < k {
-		min := -1
-		for j := 0; j < len(d.Rows); j++ { // find the minimum distance
-			if j != i && !neighbors[j] {
-				if min == -1 {
-					min = j
-				}
-				if dist.fetchDistance(i, j) < dist.fetchDistance(i, min) {
-					min = j
-				}
+//func findNeighbors(i, k int, dist sparseDistance, d Dataset) map[int]bool {
+func findNeighbors(i, k int, d Dataset) Neighbors {
+	neighbors := make(Neighbors, 0)
+	heap.Init(&neighbors)
+	for j := range d.Rows {
+		if j != i {
+			dist := euclideanDistance(d.Rows[i], d.Rows[j])
+			if neighbors.Len() < k {
+				heap.Push(&neighbors, &Neighbor{distance: dist, class: d.GetClass(j)})
+			} else if neighbors[0].distance >= dist {
+				_ = heap.Pop(&neighbors)
+				heap.Push(&neighbors, &Neighbor{distance: dist, class: d.GetClass(j)})
 			}
 		}
-		neighbors[min] = true
 	}
 	return neighbors
 }
 
-func predictClass(neighbors map[int]bool, d Dataset) int {
+func predictClass(neighbors Neighbors, d Dataset) int {
 	classes := make(map[int]int)
-	for n := range neighbors {
-		classes[d.GetClass(n)]++
+	for _, n := range neighbors {
+		classes[n.class]++
 	}
 	pred := 0
 	for class, count := range classes {
@@ -126,19 +172,6 @@ func predictClass(neighbors map[int]bool, d Dataset) int {
 		}
 	}
 	return pred
-}
-
-func calculateDistances(d Dataset) sparseDistance {
-	distances := make(sparseDistance, len(d.Rows))
-
-	for i := range d.Rows {
-		distances[i] = make([]float64, len(d.Rows))
-		for j := len(d.Rows) - 1; j > i; j-- {
-			distances[i][j] = euclideanDistance(d.Rows[i], d.Rows[j])
-		}
-	}
-
-	return distances
 }
 
 func euclideanDistance(a, b arff.DataRow) float64 {
