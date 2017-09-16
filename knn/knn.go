@@ -48,6 +48,21 @@ func (d *Dataset) NumClasses() int {
 	return d.numClasses
 }
 
+// GetClass returns the class of the instance at index i in the dataset
+func (d Dataset) GetClass(i int) int {
+	r := d.Rows[i]
+	return int(r.Values[len(r.Values)-1].(float64))
+}
+
+type sparseDistance [][]float64
+
+func (s sparseDistance) fetchDistance(i, j int) float64 {
+	if j < i {
+		i, j = j, i
+	}
+	return s[i][j]
+}
+
 // ReadARFF is just me playing around
 func ReadARFF() {
 	data, err := arff.Open("./samples/small.arff")
@@ -70,18 +85,47 @@ func ReadARFF() {
 func KNN(k int, d Dataset) []int {
 	predictions := make([]int, len(d.Rows))
 
+	distances := calculateDistances(d)
+
+	for i := range d.Rows {
+		neighbors := make(map[int]bool)
+		for len(neighbors) < k {
+			min := -1
+			for j := 0; j < len(d.Rows); j++ { // find the minimum distance
+				if j != i && !neighbors[j] {
+					if min == -1 {
+						min = j
+					}
+					if distances.fetchDistance(i, j) < distances.fetchDistance(i, min) {
+						min = j
+					}
+				}
+			}
+			neighbors[min] = true
+		}
+		classes := make(map[int]int)
+		for n := range neighbors {
+			classes[d.GetClass(n)]++
+		}
+		pred := 0
+		for class, count := range classes {
+			if count > pred {
+				pred = class
+			}
+		}
+		predictions[i] = pred
+	}
+
 	return predictions
 }
 
-func calculateDistances(d Dataset) [][]float64 {
-	distances := make([][]float64, len(d.Rows))
+func calculateDistances(d Dataset) sparseDistance {
+	distances := make(sparseDistance, len(d.Rows))
 
 	for i := range d.Rows {
 		distances[i] = make([]float64, len(d.Rows))
-		for j := 0; j < i; j++ {
-			if i != j {
-				distances[i][j] = euclideanDistance(d.Rows[i], d.Rows[j])
-			}
+		for j := len(d.Rows) - 1; j > i; j-- {
+			distances[i][j] = euclideanDistance(d.Rows[i], d.Rows[j])
 		}
 	}
 
