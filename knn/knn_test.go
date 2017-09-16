@@ -2,7 +2,6 @@ package knn
 
 import (
 	"fmt"
-	"math"
 	"testing"
 )
 
@@ -13,7 +12,7 @@ import (
 func TestSmallData(t *testing.T) {
 	d := NewDataset("./samples/small.arff")
 
-	p := KNN(4, d)
+	p := KNN(3, d)
 	c := ComputeConfusionMatrix(p, d)
 	a := ComputeAccuracy(c, d)
 
@@ -23,31 +22,29 @@ func TestSmallData(t *testing.T) {
 func TestMediumData(t *testing.T) {
 	d := NewDataset("./samples/medium.arff")
 
-	p := KNN(4, d)
+	p := KNN(3, d)
 	c := ComputeConfusionMatrix(p, d)
 	a := ComputeAccuracy(c, d)
 
 	fmt.Printf("The KNN classifier for %d instances required %d ms CPU time, accuracy was %.4f\n", len(d.Rows), 0, a)
 }
 
-func BenchmarkCalculateDistances(b *testing.B) {
-	d := NewDataset("./samples/medium.arff")
+func BenchmarkSmall(b *testing.B) {
+	d := NewDataset("./samples/small.arff")
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_ = calculateDistances(d)
+		_ = KNN(3, d)
 	}
 	//fmt.Println(dist)
 }
 
-func BenchmarkMult(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		_ = 156.04 * 156.04
-	}
-}
+func BenchmarkMedium(b *testing.B) {
+	d := NewDataset("./samples/medium.arff")
 
-func BenchmarkPow(b *testing.B) {
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_ = math.Pow(156.04, 2)
+		_ = KNN(3, d)
 	}
+	//fmt.Println(dist)
 }
