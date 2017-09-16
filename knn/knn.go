@@ -88,35 +88,44 @@ func KNN(k int, d Dataset) []int {
 	distances := calculateDistances(d)
 
 	for i := range d.Rows {
-		neighbors := make(map[int]bool)
-		for len(neighbors) < k {
-			min := -1
-			for j := 0; j < len(d.Rows); j++ { // find the minimum distance
-				if j != i && !neighbors[j] {
-					if min == -1 {
-						min = j
-					}
-					if distances.fetchDistance(i, j) < distances.fetchDistance(i, min) {
-						min = j
-					}
-				}
-			}
-			neighbors[min] = true
-		}
-		classes := make(map[int]int)
-		for n := range neighbors {
-			classes[d.GetClass(n)]++
-		}
-		pred := 0
-		for class, count := range classes {
-			if count > pred {
-				pred = class
-			}
-		}
-		predictions[i] = pred
+		neighbors := findNeighbors(i, k, distances, d)
+		predictions[i] = predictClass(neighbors, d)
 	}
 
 	return predictions
+}
+
+func findNeighbors(i, k int, dist sparseDistance, d Dataset) map[int]bool {
+	neighbors := make(map[int]bool)
+	for len(neighbors) < k {
+		min := -1
+		for j := 0; j < len(d.Rows); j++ { // find the minimum distance
+			if j != i && !neighbors[j] {
+				if min == -1 {
+					min = j
+				}
+				if dist.fetchDistance(i, j) < dist.fetchDistance(i, min) {
+					min = j
+				}
+			}
+		}
+		neighbors[min] = true
+	}
+	return neighbors
+}
+
+func predictClass(neighbors map[int]bool, d Dataset) int {
+	classes := make(map[int]int)
+	for n := range neighbors {
+		classes[d.GetClass(n)]++
+	}
+	pred := 0
+	for class, count := range classes {
+		if count > pred {
+			pred = class
+		}
+	}
+	return pred
 }
 
 func calculateDistances(d Dataset) sparseDistance {
