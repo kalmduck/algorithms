@@ -132,11 +132,32 @@ func ReadARFF() {
 func KNN(k int, d Dataset) []int {
 	predictions := make([]int, len(d.Rows))
 
-	//	distances := calculateDistances(d)
-
 	for i := range d.Rows {
 		neighbors := findNeighbors(i, k, d)
 		predictions[i] = predictClass(neighbors, d)
+	}
+
+	return predictions
+}
+
+// ThreadedKNN implements KNN in a multithreaded fashion using t threads.  If
+// t > len(d.Rows), t is set to len(d.Rows)
+func ThreadedKNN(k, t int, d Dataset) []int {
+	predictions := make([]int, len(d.Rows))
+
+	if t > len(d.Rows) {
+		t = len(d.Rows)
+	}
+
+	limit := make(chan int, t)
+
+	for i := range d.Rows {
+		limit <- 1
+		go func(i, k int, d Dataset) {
+			neighbors := findNeighbors(i, k, d)
+			predictions[i] = predictClass(neighbors, d)
+			<-limit
+		}(i, k, d)
 	}
 
 	return predictions
