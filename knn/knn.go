@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/bsm/arff"
 )
@@ -149,16 +150,22 @@ func ThreadedKNN(k, t int, d Dataset) []int {
 		t = len(d.Rows)
 	}
 
-	limit := make(chan int, t)
+	var wg sync.WaitGroup
 
-	for i := range d.Rows {
-		limit <- 1
-		go func(i, k int, d Dataset) {
-			neighbors := findNeighbors(i, k, d)
-			predictions[i] = predictClass(neighbors, d)
-			<-limit
-		}(i, k, d)
+	blockSize := int(math.Ceil(float64(len(d.Rows)) / float64(t)))
+
+	for i := 0; i < t; i++ {
+		wg.Add(1)
+		go func(start int) {
+			defer wg.Done()
+			for count := 0; count < blockSize && count+start < len(d.Rows); count++ {
+				neighbors := findNeighbors(start+count, k, d)
+				predictions[start+count] = predictClass(neighbors, d)
+			}
+		}(i * blockSize)
 	}
+
+	wg.Wait()
 
 	return predictions
 }
